@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pop Art Studio</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0f0f14; color: #eee; min-height: 100vh; padding: 24px;
+  }
+  h1 {
+    text-align:center; font-size:26px; margin-bottom:4px; font-weight:800;
+    background:linear-gradient(90deg,#2d69e1,#8c5fe6,#ec6ebb);
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .sub { text-align:center; color:#888; margin-bottom:22px; font-size:13px; }
+  .wrap { max-width:1100px; margin:0 auto; }
+  .stage { display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-bottom:20px; }
+  @media (max-width:720px){ .stage { grid-template-columns:1fr; } }
+  .panel {
+    background:#17171f; border:1px solid #26262f; border-radius:14px; padding:14px;
+    display:flex; flex-direction:column; align-items:center;
+  }
+  .panel h3 { font-size:12px; text-transform:uppercase; letter-spacing:1px; color:#888; margin-bottom:10px; }
+  canvas, .drop { width:100%; max-width:420px; border-radius:10px; background:#0b0b10; }
+  .drop {
+    aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;
+    border:2px dashed #3a3a46; color:#666; text-align:center; cursor:pointer; padding:20px; font-size:14px;
+  }
+  .drop:hover { border-color:#8c5fe6; color:#aaa; }
+  .controls { background:#17171f; border:1px solid #26262f; border-radius:14px; padding:18px; }
+  .row { margin-bottom:16px; }
+  .row label { display:block; font-size:12px; color:#999; margin-bottom:8px; text-transform:uppercase; letter-spacing:.5px; }
+  .presets { display:flex; flex-wrap:wrap; gap:10px; }
+  .preset { width:54px; height:54px; border-radius:10px; cursor:pointer; border:2px solid transparent; transition:.15s; }
+  .preset:hover { transform:scale(1.06); }
+  .preset.active { border-color:#fff; box-shadow:0 0 0 2px #8c5fe6; }
+  input[type=range]{ width:100%; accent-color:#8c5fe6; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:600px){ .grid2 { grid-template-columns:1fr; } }
+  .btns { display:flex; gap:12px; flex-wrap:wrap; margin-top:6px; }
+  button {
+    flex:1; min-width:140px; padding:12px; border:none; border-radius:10px;
+    font-size:14px; font-weight:600; cursor:pointer; color:#fff; background:#26262f; transition:.15s;
+  }
+  button:hover { filter:brightness(1.3); }
+  button.primary { background:linear-gradient(90deg,#2d69e1,#8c5fe6,#ec6ebb); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  .toggle { display:flex; align-items:center; gap:8px; font-size:13px; color:#bbb; cursor:pointer; text-transform:none; letter-spacing:0; }
+  .val { color:#a78bfa; font-weight:600; }
+  select { width:100%; padding:10px; background:#0f0f14; color:#eee; border:1px solid #33333d; border-radius:8px; font-size:14px; }
+  hr { border:none; border-top:1px solid #26262f; margin:18px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Pop Art Studio</h1>
+  <p class="sub">Degradado espacial + fusión screen — el mismo motor del estilo de referencia</p>
+
+  <div class="stage">
+    <div class="panel">
+      <h3>Original</h3>
+      <div class="drop" id="drop">Haz clic o arrastra una imagen aquí</div>
+      <canvas id="src" style="display:none"></canvas>
+    </div>
+    <div class="panel">
+      <h3>Pop Art</h3>
+      <canvas id="out"></canvas>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <label>Paleta de degradado</label>
+      <div class="presets" id="presets"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="row">
+        <label>Intensidad del filtro <span class="val" id="ival">100%</span></label>
+        <input type="range" id="intensity" min="0" max="100" value="100">
+      </div>
+      <div class="row">
+        <label>Ángulo del degradado <span class="val" id="aval">125°</span></label>
+        <input type="range" id="angle" min="0" max="360" value="125">
+      </div>
+      <div class="row">
+        <label>Punto negro <span class="val" id="blval">5</span></label>
+        <input type="range" id="black" min="0" max="60" value="5">
+      </div>
+      <div class="row">
+        <label>Punto blanco <span class="val" id="whval">92</span></label>
+        <input type="range" id="white" min="40" max="100" value="92">
+      </div>
+      <div class="row">
+        <label>Gamma <span class="val" id="gval">0.85</span></label>
+        <input type="range" id="gamma" min="40" max="200" value="85">
+      </div>
+      <div class="row">
+        <label>Saturación del color <span class="val" id="sval">100%</span></label>
+        <input type="range" id="sat" min="0" max="150" value="100">
+      </div>
+      <div class="row">
+        <label>Fade <span class="val" id="fval">0%</span></label>
+        <input type="range" id="fade" min="0" max="100" value="0">
+      </div>
+      <div class="row">
+        <label>Reducir grano <span class="val" id="dval">0</span></label>
+        <input type="range" id="denoise" min="0" max="100" value="0">
+      </div>
+    </div>
+
+    <hr>
+
+    <div class="row">
+      <label>Modo de fusión</label>
+      <select id="mode">
+        <option value="screen">Screen — degradado en las sombras (estilo referencia)</option>
+        <option value="multiply">Multiply — degradado en las luces</option>
+        <option value="duotone">Duotono — color según luminancia</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label class="toggle"><input type="checkbox" id="invert"> Invertir foto (negativo)</label>
+    </div>
+    <div class="row">
+      <label class="toggle"><input type="checkbox" id="posterize"> Posterizar (pop-art plano)</label>
+    </div>
+    <div class="row" id="levelsRow" style="display:none">
+      <label>Niveles <span class="val" id="lval">5</span></label>
+      <input type="range" id="levels" min="2" max="12" value="5">
+    </div>
+    <div class="row">
+      <label>Grano <span class="val" id="nval">0</span></label>
+      <input type="range" id="noise" min="0" max="30" value="0">
+    </div>
+
+    <div class="btns">
+      <button id="choose">Cargar otra foto</button>
+      <button id="reset">Restablecer ajustes</button>
+      <button id="download" class="primary" disabled>Descargar PNG</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file" accept="image/*" style="display:none">
+
+<script>
+const palettes = [
+  { name:"Azul → Púrpura → Rosa", stops:[[45,105,225],[140,95,235],[240,105,185]] },
+  { name:"Cian → Magenta",        stops:[[6,182,212],[139,92,246],[236,72,153]] },
+  { name:"Atardecer",             stops:[[124,45,18],[234,88,12],[250,204,21]] },
+  { name:"Menta",                 stops:[[5,150,105],[52,211,153],[167,243,208]] },
+  { name:"Warhol Rojo",           stops:[[190,18,60],[249,115,22],[253,224,71]] },
+  { name:"Índigo → Lima",         stops:[[49,46,129],[16,185,129],[190,242,100]] },
+  { name:"Fuego",                 stops:[[127,29,29],[239,68,68],[251,191,36]] },
+  { name:"Monocromo",             stops:[[30,30,30],[110,110,110],[200,200,200]] },
+];
+
+let current = 0, img = null;
+const srcC = document.getElementById('src'), outC = document.getElementById('out');
+const drop = document.getElementById('drop'), fileIn = document.getElementById('file');
+const $ = id => document.getElementById(id);
+
+function gradientColor(t, stops, sat){
+  const n = stops.length - 1;
+  let seg = Math.min(Math.floor(t*n), n-1);
+  const f = t*n - seg;
+  const a = stops[seg], b = stops[seg+1];
+  let r = a[0]+(b[0]-a[0])*f, g = a[1]+(b[1]-a[1])*f, bl = a[2]+(b[2]-a[2])*f;
+  if(sat !== 1){
+    const l = 0.299*r + 0.587*g + 0.114*bl;
+    r = l+(r-l)*sat; g = l+(g-l)*sat; bl = l+(bl-l)*sat;
+  }
+  return [r,g,bl];
+}
+
+// separable box blur over RGB, returns a new Float32Array
+function boxBlur(d, w, h, r){
+  const n = w*h;
+  const tmp = new Float32Array(n*3), out = new Float32Array(n*3);
+  const win = r*2+1;
+  // horizontal
+  for(let y=0; y<h; y++){
+    let sr=0, sg=0, sb=0;
+    for(let k=-r; k<=r; k++){
+      const x = Math.min(w-1, Math.max(0, k))*4 + y*w*4;
+      sr+=d[x]; sg+=d[x+1]; sb+=d[x+2];
+    }
+    for(let x=0; x<w; x++){
+      const o = (y*w+x)*3;
+      tmp[o]=sr/win; tmp[o+1]=sg/win; tmp[o+2]=sb/win;
+      const addX = Math.min(w-1, x+r+1)*4 + y*w*4;
+      const subX = Math.max(0, x-r)*4 + y*w*4;
+      sr += d[addX]-d[subX]; sg += d[addX+1]-d[subX+1]; sb += d[addX+2]-d[subX+2];
+    }
+  }
+  // vertical
+  for(let x=0; x<w; x++){
+    let sr=0, sg=0, sb=0;
+    for(let k=-r; k<=r; k++){
+      const o = (Math.min(h-1, Math.max(0,k))*w + x)*3;
+      sr+=tmp[o]; sg+=tmp[o+1]; sb+=tmp[o+2];
+    }
+    for(let y=0; y<h; y++){
+      const o = (y*w+x)*3;
+      out[o]=sr/win; out[o+1]=sg/win; out[o+2]=sb/win;
+      const addO = (Math.min(h-1, y+r+1)*w + x)*3;
+      const subO = (Math.max(0, y-r)*w + x)*3;
+      sr += tmp[addO]-tmp[subO]; sg += tmp[addO+1]-tmp[subO+1]; sb += tmp[addO+2]-tmp[subO+2];
+    }
+  }
+  return out;
+}
+
+// edge-preserving grain removal: use the blur only where local detail is small
+function denoise(d, w, h, strength){
+  const amt = strength/100;
+  const r = Math.max(1, Math.round(1 + amt*4));
+  const thresh = 12 + amt*38;           // tolerance in 0-255 units
+  const blur = boxBlur(d, w, h, r);
+  for(let p=0; p<w*h; p++){
+    const i = p*4, o = p*3;
+    const diff = (Math.abs(d[i]-blur[o]) + Math.abs(d[i+1]-blur[o+1]) + Math.abs(d[i+2]-blur[o+2]))/3;
+    let wgt = 1 - diff/thresh;
+    if(wgt <= 0) continue;
+    wgt *= amt;
+    d[i]   += (blur[o]  -d[i])  *wgt;
+    d[i+1] += (blur[o+1]-d[i+1])*wgt;
+    d[i+2] += (blur[o+2]-d[i+2])*wgt;
+  }
+}
+
+function render(){
+  if(!img) return;
+  const maxW = 1000;
+  let w = img.width, h = img.height;
+  if(w > maxW){ h = h*maxW/w; w = maxW; }
+  w = Math.round(w); h = Math.round(h);
+  srcC.width = w; srcC.height = h; outC.width = w; outC.height = h;
+  const sctx = srcC.getContext('2d', {willReadFrequently:true});
+  sctx.drawImage(img, 0, 0, w, h);
+  const imgData = sctx.getImageData(0,0,w,h);
+  const d = imgData.data;
+
+  const stops = palettes[current].stops;
+  const mix    = +$('intensity').value/100;
+  const ang    = +$('angle').value * Math.PI/180;
+  const black  = +$('black').value/100;
+  const white  = +$('white').value/100;
+  const gamma  = +$('gamma').value/100;
+  const sat    = +$('sat').value/100;
+  const mode   = $('mode').value;
+  const invert = $('invert').checked;
+  const poster = $('posterize').checked;
+  const levels = +$('levels').value;
+  const noise  = +$('noise').value/100;
+  const fade   = +$('fade').value/100;
+  const dn     = +$('denoise').value;
+
+  if(dn > 0) denoise(d, w, h, dn);
+
+  // fade: lifted blacks + compressed highlights, slightly warm and matte
+  const fLow  = fade*52, fHigh = 255 - fade*12, fScale = (fHigh-fLow)/255;
+  const fDesat = fade*0.18;
+
+  // gradient direction vector, normalized over the image diagonal
+  const dx = Math.cos(ang), dy = Math.sin(ang);
+  const projMin = Math.min(0, dx*(w-1)) + Math.min(0, dy*(h-1));
+  const projMax = Math.max(0, dx*(w-1)) + Math.max(0, dy*(h-1));
+  const span = (projMax - projMin) || 1;
+
+  // precompute gradient per x for each row cheaply: t = (dx*x + dy*y - min)/span
+  const range = Math.max(0.001, white - black);
+
+  for(let y=0; y<h; y++){
+    const rowBase = dy*y - projMin;
+    for(let x=0; x<w; x++){
+      const i = (y*w + x)*4;
+      // luminance + levels + gamma
+      let l = (0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2])/255;
+      if(invert) l = 1-l;
+      l = (l - black)/range;
+      l = l < 0 ? 0 : l > 1 ? 1 : l;
+      l = Math.pow(l, gamma);
+      if(poster){
+        const step = 1/(levels-1);
+        l = Math.round(l/step)*step;
+      }
+      if(noise) l += (Math.random()-0.5)*noise;
+      l = l < 0 ? 0 : l > 1 ? 1 : l;
+
+      let t = (dx*x + rowBase)/span;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const c = gradientColor(t, stops, sat);
+
+      let r, g, b;
+      if(mode === 'screen'){
+        r = 255-(255-c[0])*(1-l); g = 255-(255-c[1])*(1-l); b = 255-(255-c[2])*(1-l);
+      } else if(mode === 'multiply'){
+        r = c[0]*l; g = c[1]*l; b = c[2]*l;
+      } else { // duotone: color driven by luminance instead of position
+        const cc = gradientColor(l, stops, sat);
+        r = cc[0]; g = cc[1]; b = cc[2];
+      }
+
+      r = d[i]   + (r - d[i])  *mix;
+      g = d[i+1] + (g - d[i+1])*mix;
+      b = d[i+2] + (b - d[i+2])*mix;
+
+      if(fade > 0){
+        // lift blacks toward a warm milky tone, pull down highlights
+        r = fLow*1.05 + r*fScale;
+        g = fLow*1.00 + g*fScale;
+        b = fLow*0.97 + b*fScale;
+        const lum = 0.299*r + 0.587*g + 0.114*b;
+        r += (lum-r)*fDesat; g += (lum-g)*fDesat; b += (lum-b)*fDesat;
+      }
+
+      d[i] = r; d[i+1] = g; d[i+2] = b;
+    }
+  }
+  outC.getContext('2d').putImageData(imgData,0,0);
+  $('download').disabled = false;
+}
+
+function loadImg(src){
+  const i = new Image();
+  i.onload = ()=>{ img = i; drop.style.display='none'; srcC.style.display='block'; render(); };
+  i.onerror = ()=>{ drop.textContent = 'No se pudo cargar esa imagen.'; };
+  i.src = src;
+}
+
+// palette swatches
+palettes.forEach((p,idx)=>{
+  const el = document.createElement('div');
+  el.className = 'preset'+(idx===0?' active':'');
+  el.title = p.name;
+  el.style.background = `linear-gradient(135deg, ${p.stops.map(c=>`rgb(${c[0]},${c[1]},${c[2]})`).join(',')})`;
+  el.onclick = ()=>{
+    current = idx;
+    document.querySelectorAll('.preset').forEach(e=>e.classList.remove('active'));
+    el.classList.add('active');
+    render();
+  };
+  document.getElementById('presets').appendChild(el);
+});
+
+function syncLabels(){
+  $('ival').textContent = $('intensity').value + '%';
+  $('aval').textContent = $('angle').value + '°';
+  $('blval').textContent = $('black').value;
+  $('whval').textContent = $('white').value;
+  $('gval').textContent = (+$('gamma').value/100).toFixed(2);
+  $('sval').textContent = $('sat').value + '%';
+  $('lval').textContent = $('levels').value;
+  $('nval').textContent = $('noise').value;
+  $('fval').textContent = $('fade').value + '%';
+  $('dval').textContent = $('denoise').value;
+}
+['intensity','angle','black','white','gamma','sat','levels','noise','fade','denoise'].forEach(id=>{
+  $(id).addEventListener('input', ()=>{ syncLabels(); render(); });
+});
+['mode','invert','posterize'].forEach(id=>{
+  $(id).addEventListener('change', ()=>{
+    $('levelsRow').style.display = $('posterize').checked ? 'block' : 'none';
+    render();
+  });
+});
+syncLabels();
+
+$('reset').onclick = ()=>{
+  $('intensity').value=100; $('angle').value=125; $('black').value=5;
+  $('white').value=92; $('gamma').value=85; $('sat').value=100;
+  $('noise').value=0; $('levels').value=5; $('fade').value=0; $('denoise').value=0;
+  $('mode').value='screen'; $('invert').checked=false; $('posterize').checked=false;
+  $('levelsRow').style.display='none';
+  syncLabels(); render();
+};
+
+drop.onclick = ()=>fileIn.click();
+$('choose').onclick = ()=>fileIn.click();
+fileIn.onchange = e=>{
+  const f = e.target.files[0];
+  if(f){ const r = new FileReader(); r.onload = ev=>loadImg(ev.target.result); r.readAsDataURL(f); }
+};
+['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>e.preventDefault()));
+drop.addEventListener('drop', e=>{
+  e.preventDefault();
+  const f = e.dataTransfer.files[0];
+  if(f){ const r = new FileReader(); r.onload = ev=>loadImg(ev.target.result); r.readAsDataURL(f); }
+});
+
+$('download').onclick = ()=>{
+  const a = document.createElement('a');
+  a.download = 'popart.png';
+  a.href = outC.toDataURL('image/png');
+  a.click();
+};
+</script>
+</body>
+</html>
